@@ -65,6 +65,7 @@ def main():
 
             parse_response = requests.get(parse_url)
             parse_response.raise_for_status()
+            check_for_redirect(parse_response)
             parsed_page = parse_book_page(parse_response.content)
 
             output_filename = sanitize_filename(parsed_page["title"])
@@ -76,6 +77,7 @@ def main():
             cover_url = urljoin(BASE_URL, parsed_page["cover"])
             cover_response = requests.get(cover_url)
             cover_response.raise_for_status()
+            check_for_redirect(cover_response)
 
             img_title = urlsplit(cover_url).path
             img_filename = os.path.basename(img_title)
