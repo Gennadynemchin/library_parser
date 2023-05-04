@@ -1,11 +1,17 @@
 import argparse
 import os
+import logging
 import requests
 from requests import HTTPError
 from pathlib import Path
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
 from urllib.parse import urljoin, urlsplit
+from tqdm import tqdm, trange
+from tqdm.contrib.logging import logging_redirect_tqdm
+
+
+LOG = logging.getLogger(__name__)
 
 
 def check_for_redirect(response):
@@ -54,43 +60,41 @@ def main():
     IMG_FOLDER = "images"
     Path(BOOKS_FOLDER).mkdir(exist_ok=True)
     Path(IMG_FOLDER).mkdir(exist_ok=True)
+    logging.basicConfig(level=logging.INFO)
 
-    for book in range(args.start_id, args.end_id+1):
-        download_url = f"{BASE_URL}/txt.php?id={book}"
-        parse_url = f"{BASE_URL}/b{book}"
-        try:
-            download_response = requests.get(download_url)
-            download_response.raise_for_status()
-            check_for_redirect(download_response)
+    with logging_redirect_tqdm():
+        for book in trange(args.start_id, args.end_id + 1, desc='Downloading books', leave=True):
+            download_url = f"{BASE_URL}/txt.php?id={book}"
+            parse_url = f"{BASE_URL}/b{book}"
+            try:
+                download_response = requests.get(download_url)
+                download_response.raise_for_status()
+                check_for_redirect(download_response)
 
-            parse_response = requests.get(parse_url)
-            parse_response.raise_for_status()
-            parsed_page = parse_book_page(parse_response.content)
+                parse_response = requests.get(parse_url)
+                parse_response.raise_for_status()
+                parsed_page = parse_book_page(parse_response.content)
 
-            output_filename = sanitize_filename(parsed_page["title"])
-            filepath = os.path.join(BOOKS_FOLDER, f"{output_filename}.txt")
+                output_filename = sanitize_filename(parsed_page["title"])
+                filepath = os.path.join(BOOKS_FOLDER, f"{output_filename}.txt")
 
-            with open(filepath, "wb") as file:
-                file.write(download_response.content)
+                with open(filepath, "wb") as file:
+                    file.write(download_response.content)
 
-            cover_url = urljoin(BASE_URL, parsed_page["cover"])
-            cover_response = requests.get(cover_url)
-            cover_response.raise_for_status()
+                cover_url = urljoin(BASE_URL, parsed_page["cover"])
+                cover_response = requests.get(cover_url)
+                cover_response.raise_for_status()
 
-            img_title = urlsplit(cover_url).path
-            img_filename = os.path.basename(img_title)
-            imgpath = os.path.join(IMG_FOLDER, img_filename)
+                img_title = urlsplit(cover_url).path
+                img_filename = os.path.basename(img_title)
+                imgpath = os.path.join(IMG_FOLDER, img_filename)
 
-            with open(imgpath, "wb") as img_file:
-                img_file.write(cover_response.content)
-            print(
-                f"Book {parsed_page.get('title')} has been downloaded\n"
-                f"Genre: {parsed_page.get('genres')}\n"
-                f"Comments: {parsed_page.get('comments')}\n\n"
-            )
-        except HTTPError:
-            print(f"The book with ID {book} has not been downloaded. Passed\n")
-            continue
+                with open(imgpath, "wb") as img_file:
+                    img_file.write(cover_response.content)
+                LOG.info(f"Book {parsed_page.get('title')} with ID {book} has been downloaded")
+            except HTTPError:
+                LOG.info(f"The book with ID {book} has not been downloaded. Passed")
+                continue
 
 
 if __name__ == "__main__":
