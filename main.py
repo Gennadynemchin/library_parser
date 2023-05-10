@@ -7,17 +7,30 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
 from urllib.parse import urljoin, urlsplit
-from tqdm import tqdm, trange
+from tqdm import trange
 from tqdm.contrib.logging import logging_redirect_tqdm
+from time import sleep
+from requests.adapters import HTTPAdapter, Retry
 
 
-LOG = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
+
+parser = argparse.ArgumentParser(description="Парсер книг с сайта tululu.org")
+parser.add_argument("start_id", nargs="?", type=int, default=1, help="Start id for downloading")
+parser.add_argument("end_id", nargs="?", type=int, default=20, help="Last id for downloading")
+args = parser.parse_args()
+
+base_url = "https://tululu.org"
+books_folder = "books"
+img_folder = "images"
+Path(books_folder).mkdir(exist_ok=True)
+Path(img_folder).mkdir(exist_ok=True)
+logging.basicConfig(level=logging.INFO)
 
 
 def check_for_redirect(response):
-    for r in response.history:
-        if r.status_code != 200:
-            raise HTTPError
+    if len(response.history) > 0:
+        raise HTTPError
 
 
 def parse_book_page(html_content):
@@ -45,55 +58,61 @@ def parse_book_page(html_content):
     return content
 
 
+def download_text(download_url, book_id):
+    params = {'id': book_id}
+    response_download = requests.get(download_url, params=params)
+    response_download.raise_for_status()
+    check_for_redirect(response_download)
+    return response_download.content
+
+
+def download_cover(base_url, img_url):
+    cover_url = urljoin(base_url, img_url)
+    cover_response = requests.get(cover_url)
+    cover_response.raise_for_status()
+    check_for_redirect(cover_response)
+    img_title = urlsplit(cover_url).path
+    img_filename = os.path.basename(img_title)
+    content = {"filename": img_filename,
+               "img": cover_response.content
+               }
+    return content
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Парсер книг с сайта tululu.org")
-    parser.add_argument(
-        "start_id", nargs="?", type=int, default=1, help="Start id for downloading"
-    )
-    parser.add_argument(
-        "end_id", nargs="?", type=int, default=20, help="Last id for downloading"
-    )
-    args = parser.parse_args()
-
-    BASE_URL = "https://tululu.org"
-    BOOKS_FOLDER = "books"
-    IMG_FOLDER = "images"
-    Path(BOOKS_FOLDER).mkdir(exist_ok=True)
-    Path(IMG_FOLDER).mkdir(exist_ok=True)
-    logging.basicConfig(level=logging.INFO)
-
     with logging_redirect_tqdm():
-        for book in trange(args.start_id, args.end_id + 1, desc='Downloading books', leave=True):
-            download_url = f"{BASE_URL}/txt.php?id={book}"
-            parse_url = f"{BASE_URL}/b{book}"
-            try:
-                download_response = requests.get(download_url)
-                download_response.raise_for_status()
-                check_for_redirect(download_response)
 
-                parse_response = requests.get(parse_url)
-                parse_response.raise_for_status()
-                parsed_page = parse_book_page(parse_response.content)
+        session = requests.Session()
+        total_retries = 3
+        backoff_factor = 5
+
+        retries = Retry(total=total_retries, backoff_factor=backoff_factor)
+        for book_id in trange(args.start_id, args.end_id + 1, desc='Downloading books', leave=True):
+            download_url = f"{base_url}/txt.php"
+            parse_url = f"{base_url}/b{book_id}"
+            try:
+                response_download = download_text(download_url, book_id)
+                # response_parse = requests.get(parse_url)
+                session.mount(parse_url, HTTPAdapter(max_retries=retries))
+                response_parse = session.get(parse_url)
+                # print(response_parse.history)
+                response_parse.raise_for_status()
+                parsed_page = parse_book_page(response_parse.content)
 
                 output_filename = sanitize_filename(parsed_page["title"])
-                filepath = os.path.join(BOOKS_FOLDER, f"{output_filename}.txt")
-
+                filepath = os.path.join(books_folder, f"{output_filename}.txt")
                 with open(filepath, "wb") as file:
-                    file.write(download_response.content)
-
-                cover_url = urljoin(BASE_URL, parsed_page["cover"])
-                cover_response = requests.get(cover_url)
-                cover_response.raise_for_status()
-
-                img_title = urlsplit(cover_url).path
-                img_filename = os.path.basename(img_title)
-                imgpath = os.path.join(IMG_FOLDER, img_filename)
-
+                    file.write(response_download)
+                cover_response = download_cover(base_url, parsed_page["cover"])
+                imgpath = os.path.join(img_folder, cover_response['filename'])
                 with open(imgpath, "wb") as img_file:
-                    img_file.write(cover_response.content)
-                LOG.info(f"Book {parsed_page.get('title')} with ID {book} has been downloaded")
+                    img_file.write(cover_response['img'])
+                log.info(f"Book {parsed_page.get('title')} with ID {book_id} has been downloaded")
+            except (requests.exceptions.HTTPError, requests.RequestException, requests.exceptions.Timeout):
+                log.info("Try to reconnect after 5 seconds")
+                sleep(5)
             except HTTPError:
-                LOG.info(f"The book with ID {book} has not been downloaded. Passed")
+                log.info(f"The book with ID {book_id} has not been downloaded. Passed")
                 continue
 
 
