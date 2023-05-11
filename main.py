@@ -10,15 +10,14 @@ from pathvalidate import sanitize_filename
 from urllib.parse import urljoin, urlsplit
 from tqdm import trange
 from tqdm.contrib.logging import logging_redirect_tqdm
-from time import sleep
 from requests.adapters import HTTPAdapter, Retry
 
 
 log = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser(description="Парсер книг с сайта tululu.org")
-parser.add_argument("start_id", nargs="?", type=int, default=1, help="Start id for downloading")
-parser.add_argument("end_id", nargs="?", type=int, default=20, help="Last id for downloading")
+parser.add_argument("start_id", nargs="?", type=int, default=20, help="Start id for downloading")
+parser.add_argument("end_id", nargs="?", type=int, default=25, help="Last id for downloading")
 args = parser.parse_args()
 
 base_url = "https://tululu.org"
@@ -92,19 +91,20 @@ def main():
 
         for book_id in trange(args.start_id, args.end_id + 1, desc='Task in progress', leave=True):
             download_url = f"{base_url}/txt.php"
-            parse_url = f"{base_url}/b{book_id}"
+            parse_url = f"{base_url}/b{book_id}/"
             try:
                 response_download = download_text(download_url, book_id, session, retries)
 
                 session.mount(parse_url, HTTPAdapter(max_retries=retries))
                 response_parse = session.get(parse_url)
-                response_parse.raise_for_status()
+                if len(response_parse.history) > 1:
+                    raise HTTPError
 
                 parsed_page = parse_book_page(response_parse.content)
                 cover_response = download_cover(base_url, parsed_page["cover"], session, retries)
 
             except HTTPError:
-                log.info(f"The book with ID {book_id} has not been downloaded. Passed")
+                log.info(f"The book with ID {book_id} has been passed {parse_url}")
                 continue
             except (
                     MaxRetryError,
