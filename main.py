@@ -2,15 +2,15 @@ import argparse
 import os
 import logging
 import requests
+from requests.adapters import HTTPAdapter, Retry
 from urllib3.exceptions import NewConnectionError, MaxRetryError
-from requests import HTTPError
+from urllib.parse import urljoin, urlsplit
 from pathlib import Path
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
-from urllib.parse import urljoin, urlsplit
 from tqdm import trange
 from tqdm.contrib.logging import logging_redirect_tqdm
-from requests.adapters import HTTPAdapter, Retry
+
 
 
 log = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ logging.basicConfig(level=logging.INFO)
 
 def check_for_redirect(response):
     if len(response.history) > 0:
-        raise HTTPError
+        raise requests.HTTPError
 
 
 def parse_book_page(html_content):
@@ -98,13 +98,13 @@ def main():
                 session.mount(parse_url, HTTPAdapter(max_retries=retries))
                 response_parse = session.get(parse_url)
                 if len(response_parse.history) > 1:
-                    raise HTTPError
+                    raise requests.HTTPError
 
                 parsed_page = parse_book_page(response_parse.content)
                 cover_response = download_cover(base_url, parsed_page["cover"], session, retries)
 
-            except HTTPError:
-                log.info(f"The book with ID {book_id} has been passed {parse_url}")
+            except requests.HTTPError:
+                log.info(f"The book with ID {book_id} has been passed")
                 continue
             except (
                     MaxRetryError,
