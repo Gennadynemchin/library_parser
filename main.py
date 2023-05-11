@@ -2,7 +2,7 @@ import argparse
 import os
 import logging
 import requests
-from urllib3.exceptions import NewConnectionError
+from urllib3.exceptions import NewConnectionError, MaxRetryError
 from requests import HTTPError
 from pathlib import Path
 from bs4 import BeautifulSoup
@@ -103,6 +103,18 @@ def main():
                 parsed_page = parse_book_page(response_parse.content)
                 cover_response = download_cover(base_url, parsed_page["cover"], session, retries)
 
+            except HTTPError:
+                log.info(f"The book with ID {book_id} has not been downloaded. Passed")
+                continue
+            except (
+                    MaxRetryError,
+                    NewConnectionError,
+                    requests.exceptions.Timeout,
+                    requests.exceptions.ConnectionError
+                    ):
+                log.info(f"Try to reconnect soon. The book with ID {book_id} passed")
+
+            else:
                 output_filename = sanitize_filename(parsed_page["title"])
                 filepath = os.path.join(books_folder, f"{output_filename}.txt")
                 imgpath = os.path.join(img_folder, cover_response['filename'])
@@ -112,15 +124,6 @@ def main():
                 with open(imgpath, "wb") as img_file:
                     img_file.write(cover_response['img'])
                 log.info(f"Book {parsed_page.get('title')} with ID {book_id} has been downloaded")
-            except HTTPError:
-                log.info(f"The book with ID {book_id} has not been downloaded. Passed")
-                continue
-            except (requests.exceptions.HTTPError,
-                    requests.RequestException,
-                    NewConnectionError,
-                    requests.exceptions.Timeout):
-                # sleep(3)
-                log.info(f"Try to reconnect soon. The book with ID {book_id} passed")
 
 
 if __name__ == "__main__":
