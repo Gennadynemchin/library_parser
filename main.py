@@ -24,7 +24,7 @@ def check_for_redirect(response):
 def parse_book_page(html_content):
     soup = BeautifulSoup(html_content, "lxml")
     title_author = soup.find("h1").text.split("::")
-    cover = soup.find(class_="bookimage").find("img")["src"]
+    cover_url = soup.find(class_="bookimage").find("img")["src"]
     title = title_author[0].strip()
     author = title_author[1].strip()
     comments = soup.find_all(class_="texts")
@@ -37,7 +37,7 @@ def parse_book_page(html_content):
     for genre in genres:
         all_genres.append(" ".join(genre.text.split()))
     content = {
-        "cover": cover,
+        "cover": cover_url,
         "title": title,
         "author": author,
         "comments": all_comments,
@@ -46,7 +46,7 @@ def parse_book_page(html_content):
     return content
 
 
-def download_text(download_url, book_id, session, retries):
+def download_text(download_url, book_id, session):
     params = {"id": book_id}
     response_download = session.get(download_url, params=params)
     response_download.raise_for_status()
@@ -54,7 +54,7 @@ def download_text(download_url, book_id, session, retries):
     return response_download.content
 
 
-def download_cover(url, img_url, session, retries):
+def download_cover(url, img_url, session):
     cover_url = urljoin(url, img_url)
     cover_response = session.get(cover_url)
     cover_response.raise_for_status()
@@ -96,7 +96,7 @@ def main():
             book_text_url = f"{base_url}/txt.php"
             book_page_url = f"{base_url}/b{book_id}/"
             try:
-                book_content = download_text(book_text_url, book_id, session, retries)
+                book_content = download_text(book_text_url, book_id, session)
 
                 book_page = session.get(book_page_url)
                 book_page.raise_for_status()
@@ -104,7 +104,7 @@ def main():
 
                 page_content = parse_book_page(book_page.content)
                 cover_response = download_cover(
-                    book_page_url, page_content["cover"], session, retries
+                    book_page_url, page_content["cover"], session
                 )
 
             except requests.HTTPError:
