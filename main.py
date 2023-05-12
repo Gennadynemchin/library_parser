@@ -91,16 +91,17 @@ def main():
         session.mount('https://', HTTPAdapter(max_retries=retries))
 
         for book_id in trange(args.start_id, args.end_id + 1, desc='Task in progress', leave=True):
-            download_url = f"{base_url}/txt.php"
-            parse_url = f"{base_url}/b{book_id}/"
+            book_text_url = f"{base_url}/txt.php"
+            book_page_url = f"{base_url}/b{book_id}/"
             try:
-                response_download = download_text(download_url, book_id, session, retries)
+                book_content = download_text(book_text_url, book_id, session, retries)
 
-                response_parse = session.get(parse_url)
-                check_for_redirect(response_parse)
+                book_page = session.get(book_page_url)
+                book_page.raise_for_status()
+                check_for_redirect(book_page)
 
-                parsed_page = parse_book_page(response_parse.content)
-                cover_response = download_cover(parse_url, parsed_page["cover"], session, retries)
+                page_content = parse_book_page(book_page.content)
+                cover_response = download_cover(book_page_url, page_content["cover"], session, retries)
 
             except requests.HTTPError:
                 log.info(f"The book with ID {book_id} has been passed")
@@ -115,15 +116,15 @@ def main():
                 sleep(30)
 
             else:
-                output_filename = sanitize_filename(parsed_page["title"])
+                output_filename = sanitize_filename(page_content["title"])
                 filepath = os.path.join(books_folder, f"{output_filename}.txt")
                 imgpath = os.path.join(img_folder, cover_response['filename'])
 
                 with open(filepath, "wb") as file:
-                    file.write(response_download)
+                    file.write(book_content)
                 with open(imgpath, "wb") as img_file:
                     img_file.write(cover_response['img'])
-                log.info(f"Book {parsed_page.get('title')} with ID {book_id} has been downloaded")
+                log.info(f"Book {page_content.get('title')} with ID {book_id} has been downloaded")
 
 
 if __name__ == "__main__":
