@@ -2,6 +2,7 @@ import argparse
 import os
 import logging
 import requests
+from time import sleep
 from requests.adapters import HTTPAdapter, Retry
 from urllib3.exceptions import NewConnectionError, MaxRetryError
 from urllib.parse import urljoin, urlsplit
@@ -15,21 +16,9 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 
 log = logging.getLogger(__name__)
 
-parser = argparse.ArgumentParser(description="Парсер книг с сайта tululu.org")
-parser.add_argument("start_id", nargs="?", type=int, default=20, help="Start id for downloading")
-parser.add_argument("end_id", nargs="?", type=int, default=25, help="Last id for downloading")
-args = parser.parse_args()
-
-base_url = "https://tululu.org"
-books_folder = "books"
-img_folder = "images"
-Path(books_folder).mkdir(exist_ok=True)
-Path(img_folder).mkdir(exist_ok=True)
-logging.basicConfig(level=logging.INFO)
-
 
 def check_for_redirect(response):
-    if len(response.history) > 0:
+    if response.history:
         raise requests.HTTPError
 
 
@@ -60,16 +49,14 @@ def parse_book_page(html_content):
 
 def download_text(download_url, book_id, session, retries):
     params = {'id': book_id}
-    session.mount(download_url, HTTPAdapter(max_retries=retries))
     response_download = session.get(download_url, params=params)
     response_download.raise_for_status()
     check_for_redirect(response_download)
     return response_download.content
 
 
-def download_cover(base_url, img_url, session, retries):
-    cover_url = urljoin(base_url, img_url)
-    session.mount(cover_url, HTTPAdapter(max_retries=retries))
+def download_cover(url, img_url, session, retries):
+    cover_url = urljoin(url, img_url)
     cover_response = session.get(cover_url)
     cover_response.raise_for_status()
     check_for_redirect(cover_response)
@@ -82,12 +69,26 @@ def download_cover(base_url, img_url, session, retries):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Парсер книг с сайта tululu.org")
+    parser.add_argument("start_id", nargs="?", type=int, default=1, help="Start id for downloading")
+    parser.add_argument("end_id", nargs="?", type=int, default=100, help="Last id for downloading")
+    args = parser.parse_args()
+
+    base_url = "https://tululu.org"
+    books_folder = "books"
+    img_folder = "images"
+    Path(books_folder).mkdir(exist_ok=True)
+    Path(img_folder).mkdir(exist_ok=True)
+    logging.basicConfig(level=logging.INFO)
+
     with logging_redirect_tqdm():
 
-        session = requests.Session()
         total_retries = 3
         backoff_factor = 3
+
+        session = requests.Session()
         retries = Retry(total=total_retries, backoff_factor=backoff_factor)
+        session.mount('https://', HTTPAdapter(max_retries=retries))
 
         for book_id in trange(args.start_id, args.end_id + 1, desc='Task in progress', leave=True):
             download_url = f"{base_url}/txt.php"
@@ -95,13 +96,11 @@ def main():
             try:
                 response_download = download_text(download_url, book_id, session, retries)
 
-                session.mount(parse_url, HTTPAdapter(max_retries=retries))
                 response_parse = session.get(parse_url)
-                if len(response_parse.history) > 1:
-                    raise requests.HTTPError
+                check_for_redirect(response_parse)
 
                 parsed_page = parse_book_page(response_parse.content)
-                cover_response = download_cover(base_url, parsed_page["cover"], session, retries)
+                cover_response = download_cover(parse_url, parsed_page["cover"], session, retries)
 
             except requests.HTTPError:
                 log.info(f"The book with ID {book_id} has been passed")
@@ -113,6 +112,7 @@ def main():
                     requests.exceptions.ConnectionError
                     ):
                 log.info(f"Try to reconnect soon. The book with ID {book_id} passed")
+                sleep(30)
 
             else:
                 output_filename = sanitize_filename(parsed_page["title"])
