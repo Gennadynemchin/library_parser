@@ -71,7 +71,7 @@ def main():
         "start_id", nargs="?", type=int, default=1, help="Start id for downloading"
     )
     parser.add_argument(
-        "end_id", nargs="?", type=int, default=100, help="Last id for downloading"
+        "end_id", nargs="?", type=int, default=5, help="Last id for downloading"
     )
     args = parser.parse_args()
 
