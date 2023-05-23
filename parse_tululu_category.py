@@ -1,6 +1,5 @@
 import argparse
 import os
-import logging
 import requests
 from time import sleep
 from requests.adapters import HTTPAdapter, Retry
@@ -14,27 +13,35 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 
 
 
-total_retries = 3
-backoff_factor = 3
+def pagination(url, page_limit, session):
+    download_urls = []
+    for page in range(page_limit):
+        pagination_link = f'{url}/{page}'
+        page_content = session.get(pagination_link)
+        soup = BeautifulSoup(page_content.content, "lxml")
+        ids = soup.find_all(class_="d_book")
+        for id in ids:
+            download_path = id.find(class_="bookimage").find("a")["href"]
+            download_url = urljoin(url, download_path)
+            download_urls.append(download_url)
+    return download_urls
 
-session = requests.Session()
-retries = Retry(total=total_retries, backoff_factor=backoff_factor)
-session.mount("https://", HTTPAdapter(max_retries=retries))
 
-base_url = "https://tululu.org"
-science_fiction = "l55"
-science_fantazy_url = urljoin(base_url, science_fiction)
-page_limit = 100
+def main():
+    total_retries = 3
+    backoff_factor = 3
 
-for page in range(page_limit):
-    pagination_link = f'{science_fantazy_url}/{page}'
-    print(f'Links for page number {page}')
-    page_content = session.get(pagination_link)
+    session = requests.Session()
+    retries = Retry(total=total_retries, backoff_factor=backoff_factor)
+    session.mount("https://", HTTPAdapter(max_retries=retries))
 
-    soup = BeautifulSoup(page_content.content, "lxml")
-    ids = soup.find_all(class_="d_book")
+    base_url = "https://tululu.org"
+    science_fiction = "l55"
+    science_fantazy_url = urljoin(base_url, science_fiction)
+    page_limit = 200
 
-    for id in ids:
-        download_path = id.find(class_="bookimage").find("a")["href"]
-        download_url = urljoin(base_url, download_path)
-        print(download_url)
+    print(pagination(science_fantazy_url, page_limit, session))
+
+
+if __name__ == "__main__":
+    main()
