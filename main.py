@@ -32,7 +32,7 @@ def main():
     base_url = "https://tululu.org"
     science_fiction = "l55"
     science_fantazy_url = urljoin(base_url, science_fiction)
-    page_limit = 10
+    page_limit = 5
     books_folder = "books"
     img_folder = "images"
     Path(books_folder).mkdir(exist_ok=True)
@@ -93,7 +93,7 @@ def main():
                            "genres": page_content.get('genres')}
                 items.append(content)
 
-        books_info = json.dumps({"items": items}, ensure_ascii=False)
+        books_info = json.dumps({"items": items}, indent=2, ensure_ascii=False)
         with open("books_info.json", "w") as my_file:
             my_file.write(books_info)
 

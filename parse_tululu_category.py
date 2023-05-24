@@ -1,16 +1,8 @@
-import argparse
-import os
+from collections import OrderedDict
 import requests
-from time import sleep
 from requests.adapters import HTTPAdapter, Retry
-from urllib3.exceptions import NewConnectionError, MaxRetryError
-from urllib.parse import urljoin, urlsplit
-from pathlib import Path
+from urllib.parse import urljoin
 from bs4 import BeautifulSoup
-from pathvalidate import sanitize_filename
-from tqdm import trange
-from tqdm.contrib.logging import logging_redirect_tqdm
-
 
 
 def pagination(url, page_limit, session):
@@ -19,11 +11,10 @@ def pagination(url, page_limit, session):
         pagination_link = f'{url}/{page}'
         page_content = session.get(pagination_link)
         soup = BeautifulSoup(page_content.content, "lxml")
-        ids = soup.find_all(class_="d_book")
-        for id in ids:
-            download_path = id.find(class_="bookimage").find("a")["href"]
-            download_url = urljoin(url, download_path)
-            download_urls.append(download_url)
+        page_links = [link["href"] for link in soup.select(".d_book a[href^='/b']")]
+        book_ids = list(OrderedDict.fromkeys(page_links))
+        for book_id in book_ids:
+            download_urls.append(urljoin(url, book_id))
     return download_urls
 
 
@@ -38,9 +29,8 @@ def main():
     base_url = "https://tululu.org"
     science_fiction = "l55"
     science_fantazy_url = urljoin(base_url, science_fiction)
-    page_limit = 200
-
-    print(pagination(science_fantazy_url, page_limit, session))
+    page_limit = 2
+    pagination(science_fantazy_url, page_limit, session)
 
 
 if __name__ == "__main__":
