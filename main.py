@@ -1,5 +1,6 @@
 import argparse
 import os
+import json
 import logging
 import requests
 from time import sleep
@@ -46,27 +47,21 @@ def main():
         retries = Retry(total=total_retries, backoff_factor=backoff_factor)
         session.mount("https://", HTTPAdapter(max_retries=retries))
         book_links = pagination(science_fantazy_url, page_limit, session)
-
+        items = []
         for book_page_url in tqdm(book_links, desc="Getting book links in progress", leave=True):
-
-
         # for book_id in trange(args.start_id, args.end_id + 1, desc="Task in progress", leave=True):
-
             book_text_url = f"{base_url}/txt.php"
             # book_page_url = f"{base_url}/b{book_id}/"
             book_id = int(''.join(filter(str.isdigit, str(book_page_url))))
             try:
                 book_content = download_text(book_text_url, book_id, session)
-
                 book_page = session.get(book_page_url)
                 book_page.raise_for_status()
                 check_for_redirect(book_page)
-
                 page_content = parse_book_page(book_page.content)
                 cover_response = download_cover(
                     book_page_url, page_content["cover"], session
                 )
-
             except requests.HTTPError:
                 log.info(f"The book with ID {book_id} has been passed")
                 continue
@@ -78,12 +73,10 @@ def main():
             ):
                 log.info(f"Try to reconnect soon. The book with ID {book_id} passed")
                 sleep(30)
-
             else:
                 output_filename = sanitize_filename(page_content["title"])
                 filepath = os.path.join(books_folder, f"{output_filename}.txt")
                 imgpath = os.path.join(img_folder, cover_response["filename"])
-
                 with open(filepath, "wb") as file:
                     file.write(book_content)
                 with open(imgpath, "wb") as img_file:
@@ -91,6 +84,18 @@ def main():
                 log.info(
                     f"Book {page_content.get('title')} with ID {book_id} has been downloaded"
                 )
+
+                content = {"title": page_content.get('title'),
+                           "author": page_content.get('author'),
+                           "img_src": imgpath,
+                           "book_path": filepath,
+                           "comments": page_content.get('comments'),
+                           "genres": page_content.get('genres')}
+                items.append(content)
+
+        books_info = json.dumps({"items": items}, ensure_ascii=False)
+        with open("books_info.json", "w") as my_file:
+            my_file.write(books_info)
 
 
 if __name__ == "__main__":
