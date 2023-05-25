@@ -20,19 +20,14 @@ log = logging.getLogger(__name__)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Парсер книг с сайта tululu.org")
-    parser.add_argument(
-        "start_id", nargs="?", type=int, default=1, help="Start id for downloading"
-    )
-    parser.add_argument(
-        "end_id", nargs="?", type=int, default=5, help="Last id for downloading"
-    )
+    parser = argparse.ArgumentParser(description="Book parser tululu.org")
+    parser.add_argument('--start_page', type=int, required=True, help='Start page for download')
+    parser.add_argument('--end_page', type=int, required=False, help='Last page for download')
     args = parser.parse_args()
 
     base_url = "https://tululu.org"
     science_fiction = "l55"
     science_fantazy_url = urljoin(base_url, science_fiction)
-    page_limit = 5
     books_folder = "books"
     img_folder = "images"
     Path(books_folder).mkdir(exist_ok=True)
@@ -46,9 +41,9 @@ def main():
         session = requests.Session()
         retries = Retry(total=total_retries, backoff_factor=backoff_factor)
         session.mount("https://", HTTPAdapter(max_retries=retries))
-        book_links = pagination(science_fantazy_url, page_limit, session)
+        book_links = pagination(science_fantazy_url, args.start_page, args.end_page, session)
         items = []
-        for book_page_url in tqdm(book_links, desc="Getting book links in progress", leave=True):
+        for book_page_url in tqdm(book_links, desc="Getting book in progress", leave=True):
         # for book_id in trange(args.start_id, args.end_id + 1, desc="Task in progress", leave=True):
             book_text_url = f"{base_url}/txt.php"
             # book_page_url = f"{base_url}/b{book_id}/"

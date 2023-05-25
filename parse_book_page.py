@@ -3,9 +3,6 @@ from bs4 import BeautifulSoup
 
 def parse_book_page(html_content):
     soup = BeautifulSoup(html_content, "lxml")
-    # author = ''.join([author.text.split("::")[1] for author in soup.select("h1")][0])
-    # title = ''.join([title.text.split("::")[0] for title in soup.select("h1")][0])
-
     for author_title in soup.select("h1"):
         author = author_title.text.split("::")[1].strip()
         title = author_title.text.split("::")[0].strip()
