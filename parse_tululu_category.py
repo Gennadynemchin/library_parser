@@ -1,8 +1,7 @@
 from collections import OrderedDict
-import requests
-import logging
-from requests.adapters import HTTPAdapter, Retry
 from urllib.parse import urljoin
+import logging
+import requests
 from bs4 import BeautifulSoup
 from tqdm import trange
 from downloads import check_for_redirect
@@ -26,24 +25,5 @@ def pagination(url, start_page, end_page, session):
         for book_id in book_ids:
             book_link = urljoin(url, book_id)
             download_urls.append(book_link)
-            log.info(f"The link {book_link} has been saved")
+            log.info("The link %s has been saved", book_link)
     return download_urls
-
-
-def main():
-    total_retries = 3
-    backoff_factor = 3
-
-    session = requests.Session()
-    retries = Retry(total=total_retries, backoff_factor=backoff_factor)
-    session.mount("https://", HTTPAdapter(max_retries=retries))
-
-    base_url = "https://tululu.org"
-    science_fiction = "l55"
-    science_fantazy_url = urljoin(base_url, science_fiction)
-    page_limit = 2
-    pagination(science_fantazy_url, page_limit, session)
-
-
-if __name__ == "__main__":
-    main()

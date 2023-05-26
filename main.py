@@ -1,56 +1,35 @@
-import argparse
 import os
 import json
 import logging
-import requests
 from time import sleep
+from urllib.parse import urljoin
+import requests
 from requests.adapters import HTTPAdapter, Retry
 from urllib3.exceptions import NewConnectionError, MaxRetryError
-from urllib.parse import urljoin, urlsplit
-from pathlib import Path
 from pathvalidate import sanitize_filename
-from tqdm import tqdm, trange
+from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 from parse_tululu_category import pagination
 from parse_book_page import parse_book_page
 from downloads import download_text, download_cover, check_for_redirect
+from arg_parser import get_arg_parser
 
 
 log = logging.getLogger(__name__)
 
-'''
-def dir_path(string):
-    if os.path.isdir(string):
-        return string
-    else:
-        raise NotADirectoryError(string)
-'''
 
 def main():
-    parser = argparse.ArgumentParser(description="Book parser tululu.org")
-    parser.add_argument('--start_page', type=int, required=True, help='Start page for download')
-    parser.add_argument('--end_page', type=int, required=False, help='Last page for download')
-    parser.add_argument('--dest_folder', type=str, default='media')
-    parser.add_argument('--json_path', type=str, default='json')
-    parser.add_argument('--skip_imgs', action='store_true')
-    parser.add_argument('--skip_txt', action='store_true')
-    args = parser.parse_args()
+    args = get_arg_parser()
 
     base_url = "https://tululu.org"
     science_fiction = "l55"
     science_fantazy_url = urljoin(base_url, science_fiction)
-
     books_folder = os.path.join(args.dest_folder, "books")
     img_folder = os.path.join(args.dest_folder, "images")
-
     os.makedirs(books_folder, exist_ok=True)
     os.makedirs(img_folder, exist_ok=True)
     os.makedirs(args.json_path, exist_ok=True)
     json_path = os.path.join(args.json_path, "books_info.json")
-    if args.skip_imgs:
-        print('Skipped')
-    else:
-        print('Not skipped')
     logging.basicConfig(level=logging.INFO)
 
     with logging_redirect_tqdm():
@@ -63,9 +42,7 @@ def main():
         book_links = pagination(science_fantazy_url, args.start_page, args.end_page, session)
         items = []
         for book_page_url in tqdm(book_links, desc="Getting book in progress", leave=True):
-        # for book_id in trange(args.start_id, args.end_id + 1, desc="Task in progress", leave=True):
             book_text_url = f"{base_url}/txt.php"
-            # book_page_url = f"{base_url}/b{book_id}/"
             book_id = int(''.join(filter(str.isdigit, str(book_page_url))))
             try:
                 book_content = download_text(book_text_url, book_id, session)
@@ -78,7 +55,7 @@ def main():
                     book_page_url, page_content["cover"], session
                 )
             except requests.HTTPError:
-                log.info(f"The book with ID {book_id} has been passed")
+                log.info("The book with ID %s has been passed", book_id)
                 continue
             except (
                 MaxRetryError,
@@ -86,7 +63,7 @@ def main():
                 requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError,
             ):
-                log.info(f"Try to reconnect soon. The book with ID {book_id} passed")
+                log.info("Try to reconnect soon. The book with ID %s passed", book_id)
                 sleep(30)
             else:
                 if not args.skip_imgs:
@@ -104,7 +81,7 @@ def main():
                     filepath = None
 
                 log.info(
-                    f"Book {page_content.get('title')} with ID {book_id} has been downloaded"
+                    "Book %s with ID %s has been downloaded", page_content.get('title'), book_id
                 )
 
                 content = {"title": page_content.get('title'),

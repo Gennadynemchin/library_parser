@@ -1,6 +1,6 @@
 import os
-import requests
 from urllib.parse import urljoin, urlsplit
+import requests
 
 
 def check_for_redirect(response):
