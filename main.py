@@ -9,7 +9,7 @@ from urllib3.exceptions import NewConnectionError, MaxRetryError
 from pathvalidate import sanitize_filename
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
-from parse_tululu_category import pagination
+from parse_tululu_category import pagination, get_max_page
 from parse_book_page import parse_book_page
 from downloads import download_text, download_cover, check_for_redirect
 from arg_parser import get_arg_parser
@@ -30,6 +30,7 @@ def main():
     os.makedirs(img_folder, exist_ok=True)
     os.makedirs(args.json_path, exist_ok=True)
     json_path = os.path.join(args.json_path, "books_info.json")
+
     logging.basicConfig(level=logging.INFO)
 
     with logging_redirect_tqdm():
@@ -39,7 +40,14 @@ def main():
         session = requests.Session()
         retries = Retry(total=total_retries, backoff_factor=backoff_factor)
         session.mount("https://", HTTPAdapter(max_retries=retries))
-        book_links = pagination(science_fantazy_url, args.start_page, args.end_page, session)
+
+        start_page = args.start_page
+        if not args.end_page:
+            end_page = get_max_page(science_fantazy_url, session)
+        else:
+            end_page = args.end_page
+
+        book_links = pagination(science_fantazy_url, start_page, end_page, session)
         items = []
         for book_page_url in tqdm(book_links, desc="Getting book in progress", leave=True):
             book_text_url = f"{base_url}/txt.php"

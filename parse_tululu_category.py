@@ -27,3 +27,15 @@ def pagination(url, start_page, end_page, session):
             download_urls.append(book_link)
             log.info("The link %s has been saved", book_link)
     return download_urls
+
+
+def get_max_page(url, session):
+    page_numbers = []
+    page_content = session.get(url)
+    soup = BeautifulSoup(page_content.content, "lxml")
+    for page_number in soup.select(".center .npage"):
+        try:
+            page_numbers.append(int(page_number.text))
+        except ValueError:
+            continue
+    return max(page_numbers)
