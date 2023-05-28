@@ -1,29 +1,38 @@
-import os
 import json
 import logging
+import os
 from time import sleep
 from urllib.parse import urljoin
+
 import requests
-from requests.adapters import HTTPAdapter, Retry
-from urllib3.exceptions import NewConnectionError, MaxRetryError
 from pathvalidate import sanitize_filename
+from requests.adapters import HTTPAdapter
+from requests.adapters import Retry
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
-from parse_tululu_category import pagination, get_max_page
-from parse_book_page import parse_book_page
-from downloads import download_text, download_cover, check_for_redirect
+from urllib3.exceptions import MaxRetryError, NewConnectionError
 from arg_parser import get_arg_parser
-
+from downloads import download_cover, download_text, check_for_redirect
+from parse_book_page import parse_book_page
+from parse_tululu_category import get_max_page, get_book_pages
 
 log = logging.getLogger(__name__)
 
 
 def main():
-    args = get_arg_parser()
+    total_retries = 3
+    backoff_factor = 3
 
+    session = requests.Session()
+    retries = Retry(total=total_retries, backoff_factor=backoff_factor)
+    session.mount("https://", HTTPAdapter(max_retries=retries))
     base_url = "https://tululu.org"
     science_fiction = "l55"
     science_fantazy_url = urljoin(base_url, science_fiction)
+    max_page = get_max_page(science_fantazy_url, session)
+    args = get_arg_parser(max_page)
+    start_page = args.start_page
+    end_page = args.end_page
     books_folder = os.path.join(args.dest_folder, "books")
     img_folder = os.path.join(args.dest_folder, "images")
     os.makedirs(books_folder, exist_ok=True)
@@ -34,21 +43,8 @@ def main():
     logging.basicConfig(level=logging.INFO)
 
     with logging_redirect_tqdm():
-        total_retries = 3
-        backoff_factor = 3
-
-        session = requests.Session()
-        retries = Retry(total=total_retries, backoff_factor=backoff_factor)
-        session.mount("https://", HTTPAdapter(max_retries=retries))
-
-        start_page = args.start_page
-        if not args.end_page:
-            end_page = get_max_page(science_fantazy_url, session)
-        else:
-            end_page = args.end_page
-
-        book_links = pagination(science_fantazy_url, start_page, end_page, session)
-        items = []
+        book_links = get_book_pages(science_fantazy_url, start_page, end_page, session)
+        books_info = []
         for book_page_url in tqdm(book_links, desc="Getting book in progress", leave=True):
             book_text_url = f"{base_url}/txt.php"
             book_id = int(''.join(filter(str.isdigit, str(book_page_url))))
@@ -98,11 +94,11 @@ def main():
                            "book_path": filepath,
                            "comments": page_content.get('comments'),
                            "genres": page_content.get('genres')}
-                items.append(content)
+                books_info.append(content)
 
-        books_info = json.dumps({"items": items}, indent=2, ensure_ascii=False)
-        with open(json_path, "w") as my_file:
-            my_file.write(books_info)
+
+        with open(json_path, "w") as books_data:
+            json.dump({"books_info": books_info}, books_data, indent=2, ensure_ascii=False)
 
 
 if __name__ == "__main__":

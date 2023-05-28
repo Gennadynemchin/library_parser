@@ -1,5 +1,7 @@
 import os
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urljoin
+from urllib.parse import urlsplit
+
 import requests
 
 
