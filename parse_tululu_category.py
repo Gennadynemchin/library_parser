@@ -20,6 +20,7 @@ def get_book_pages(url, start_page, end_page, session):
         try:
             check_for_redirect(page_content)
         except requests.HTTPError:
+            log.warning("Redirect detected")
             break
         soup = BeautifulSoup(page_content.content, "lxml")
         page_links = [link["href"] for link in soup.select(".d_book a[href^='/b']")]
@@ -34,6 +35,8 @@ def get_book_pages(url, start_page, end_page, session):
 def get_max_page(url, session):
     page_content = session.get(url)
     page_content.raise_for_status()
+    print(page_content.history)
+    # check_for_redirect(page_content)
     soup = BeautifulSoup(page_content.content, "lxml")
     max_page_number = [page.text for page in soup.select(".center .npage")][-1]
     return max_page_number

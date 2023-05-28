@@ -22,7 +22,6 @@ log = logging.getLogger(__name__)
 def main():
     total_retries = 3
     backoff_factor = 3
-
     session = requests.Session()
     retries = Retry(total=total_retries, backoff_factor=backoff_factor)
     session.mount("https://", HTTPAdapter(max_retries=retries))
@@ -59,7 +58,7 @@ def main():
                     book_page_url, page_content["cover"], session
                 )
             except requests.HTTPError:
-                log.info("The book with ID %s has been passed", book_id)
+                log.warning("The book with ID %s has been passed", book_id)
                 continue
             except (
                 MaxRetryError,
@@ -67,7 +66,7 @@ def main():
                 requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError,
             ):
-                log.info("Try to reconnect soon. The book with ID %s passed", book_id)
+                log.warning("Try to reconnect soon. The book with ID %s passed", book_id)
                 sleep(30)
             else:
                 if not args.skip_imgs:
@@ -83,11 +82,9 @@ def main():
                         file.write(book_content)
                 else:
                     filepath = None
-
                 log.info(
                     "Book %s with ID %s has been downloaded", page_content.get('title'), book_id
                 )
-
                 content = {"title": page_content.get('title'),
                            "author": page_content.get('author'),
                            "img_src": imgpath,
@@ -95,8 +92,6 @@ def main():
                            "comments": page_content.get('comments'),
                            "genres": page_content.get('genres')}
                 books_info.append(content)
-
-
         with open(json_path, "w") as books_data:
             json.dump({"books_info": books_info}, books_data, indent=2, ensure_ascii=False)
 
