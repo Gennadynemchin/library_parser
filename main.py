@@ -6,14 +6,20 @@ from urllib.parse import urljoin
 
 import requests
 from pathvalidate import sanitize_filename
-from requests.adapters import HTTPAdapter, Retry
+from requests.adapters import HTTPAdapter
+from requests.adapters import Retry
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
-from urllib3.exceptions import MaxRetryError, NewConnectionError
+from urllib3.exceptions import MaxRetryError
+from urllib3.exceptions import NewConnectionError
+
 from arg_parser import get_arg_parser
-from downloads import download_cover, download_text, check_for_redirect
+from downloads import check_for_redirect
+from downloads import download_cover
+from downloads import download_text
 from parse_book_page import parse_book_page
-from parse_tululu_category import get_max_page, get_book_pages
+from parse_tululu_category import get_book_pages
+from parse_tululu_category import get_max_page
 
 log = logging.getLogger(__name__)
 

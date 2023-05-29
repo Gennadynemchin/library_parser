@@ -1,10 +1,13 @@
 import logging
 from collections import OrderedDict
+from time import sleep
 from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
 from tqdm import trange
+from urllib3.exceptions import MaxRetryError
+from urllib3.exceptions import NewConnectionError
 
 from downloads import check_for_redirect
 
@@ -22,6 +25,14 @@ def get_book_pages(url, start_page, end_page, session):
         except requests.HTTPError:
             log.warning("Redirect detected")
             break
+        except (
+                MaxRetryError,
+                NewConnectionError,
+                requests.exceptions.Timeout,
+                requests.exceptions.ConnectionError,
+        ):
+            log.warning("Try to reconnect soon")
+            sleep(30)
         soup = BeautifulSoup(page_content.content, "lxml")
         page_links = [link["href"] for link in soup.select(".d_book a[href^='/b']")]
         book_ids = list(OrderedDict.fromkeys(page_links))

@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
-from requests.adapters import HTTPAdapter, Retry
+from requests.adapters import HTTPAdapter
+from requests.adapters import Retry
 
 
 def parse_book_page(html_content):
