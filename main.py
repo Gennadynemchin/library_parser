@@ -30,18 +30,23 @@ def main():
     session = requests.Session()
     retries = Retry(total=total_retries, backoff_factor=backoff_factor)
     session.mount("https://", HTTPAdapter(max_retries=retries))
+
     base_url = "https://tululu.org"
     science_fiction = "l55"
     science_fantazy_url = urljoin(base_url, science_fiction)
+
     max_page = get_max_page(science_fantazy_url, session)
+
     args = get_arg_parser(max_page)
     start_page = args.start_page
     end_page = args.end_page
+
     books_folder = os.path.join(args.dest_folder, "books")
     img_folder = os.path.join(args.dest_folder, "images")
     os.makedirs(books_folder, exist_ok=True)
     os.makedirs(img_folder, exist_ok=True)
     os.makedirs(args.json_path, exist_ok=True)
+
     json_path = os.path.join(args.json_path, "books_info.json")
 
     logging.basicConfig(level=logging.INFO)
