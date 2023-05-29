@@ -16,8 +16,10 @@ log = logging.getLogger(__name__)
 
 def get_book_pages(url, start_page, end_page, session):
     book_page_urls = []
-    for page in trange(start_page, end_page, desc="Getting book links in progress", leave=True):
-        pagination_link = f'{url}/{page}'
+    for page in trange(
+        start_page, end_page, desc="Getting book links in progress", leave=True
+    ):
+        pagination_link = f"{url}/{page}"
         page_content = session.get(pagination_link)
         page_content.raise_for_status()
         try:
@@ -26,10 +28,10 @@ def get_book_pages(url, start_page, end_page, session):
             log.warning("Redirect detected")
             break
         except (
-                MaxRetryError,
-                NewConnectionError,
-                requests.exceptions.Timeout,
-                requests.exceptions.ConnectionError,
+            MaxRetryError,
+            NewConnectionError,
+            requests.exceptions.Timeout,
+            requests.exceptions.ConnectionError,
         ):
             log.warning("Try to reconnect soon")
             sleep(30)

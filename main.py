@@ -49,9 +49,11 @@ def main():
     with logging_redirect_tqdm():
         book_links = get_book_pages(science_fantazy_url, start_page, end_page, session)
         books_info = []
-        for book_page_url in tqdm(book_links, desc="Getting book in progress", leave=True):
+        for book_page_url in tqdm(
+            book_links, desc="Getting book in progress", leave=True
+        ):
             book_text_url = f"{base_url}/txt.php"
-            book_id = int(''.join(filter(str.isdigit, str(book_page_url))))
+            book_id = int("".join(filter(str.isdigit, str(book_page_url))))
             try:
                 book_content = download_text(book_text_url, book_id, session)
                 book_page = session.get(book_page_url)
@@ -71,7 +73,9 @@ def main():
                 requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError,
             ):
-                log.warning("Try to reconnect soon. The book with ID %s passed", book_id)
+                log.warning(
+                    "Try to reconnect soon. The book with ID %s passed", book_id
+                )
                 sleep(30)
             else:
                 if not args.skip_imgs:
@@ -88,17 +92,23 @@ def main():
                 else:
                     filepath = None
                 log.info(
-                    "Book %s with ID %s has been downloaded", page_content.get('title'), book_id
+                    "Book %s with ID %s has been downloaded",
+                    page_content.get("title"),
+                    book_id,
                 )
-                content = {"title": page_content.get('title'),
-                           "author": page_content.get('author'),
-                           "img_src": imgpath,
-                           "book_path": filepath,
-                           "comments": page_content.get('comments'),
-                           "genres": page_content.get('genres')}
+                content = {
+                    "title": page_content.get("title"),
+                    "author": page_content.get("author"),
+                    "img_src": imgpath,
+                    "book_path": filepath,
+                    "comments": page_content.get("comments"),
+                    "genres": page_content.get("genres"),
+                }
                 books_info.append(content)
         with open(json_path, "w") as books_data:
-            json.dump({"books_info": books_info}, books_data, indent=2, ensure_ascii=False)
+            json.dump(
+                {"books_info": books_info}, books_data, indent=2, ensure_ascii=False
+            )
 
 
 if __name__ == "__main__":
