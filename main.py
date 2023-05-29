@@ -6,8 +6,7 @@ from urllib.parse import urljoin
 
 import requests
 from pathvalidate import sanitize_filename
-from requests.adapters import HTTPAdapter
-from requests.adapters import Retry
+from requests.adapters import HTTPAdapter, Retry
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 from urllib3.exceptions import MaxRetryError, NewConnectionError
