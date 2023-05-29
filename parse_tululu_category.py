@@ -44,10 +44,9 @@ def get_book_pages(url, start_page, end_page, session):
 
 
 def get_max_page(url, session):
-    page_content = session.get(url)
+    page_content = session.get(f"{url}/1")
     page_content.raise_for_status()
-    print(page_content.history)
-    # check_for_redirect(page_content)
+    check_for_redirect(page_content)
     soup = BeautifulSoup(page_content.content, "lxml")
     max_page_number = [page.text for page in soup.select(".center .npage")][-1]
     return max_page_number
