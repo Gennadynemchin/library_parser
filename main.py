@@ -18,7 +18,7 @@ from downloads import check_for_redirect
 from downloads import download_cover
 from downloads import download_text
 from parse_book_page import parse_book_page
-from parse_tululu_category import get_book_pages
+from parse_tululu_category import get_book_links
 from parse_tululu_category import get_max_page
 
 log = logging.getLogger(__name__)
@@ -52,8 +52,8 @@ def main():
     logging.basicConfig(level=logging.INFO)
 
     with logging_redirect_tqdm():
-        book_links = get_book_pages(science_fantazy_url, start_page, end_page, session)
-        books_info = []
+        book_links = get_book_links(science_fantazy_url, start_page, end_page, session)
+        books_metadata = []
         for book_page_url in tqdm(
             book_links, desc="Getting book in progress", leave=True
         ):
@@ -109,10 +109,10 @@ def main():
                     "comments": page_content.get("comments"),
                     "genres": page_content.get("genres"),
                 }
-                books_info.append(content)
+                books_metadata.append(content)
         with open(json_path, "w") as books_data:
             json.dump(
-                {"books_info": books_info}, books_data, indent=2, ensure_ascii=False
+                {"books_metadata": books_metadata}, books_data, indent=2, ensure_ascii=False
             )
 
 

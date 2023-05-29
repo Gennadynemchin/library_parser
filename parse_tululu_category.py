@@ -14,7 +14,7 @@ from downloads import check_for_redirect
 log = logging.getLogger(__name__)
 
 
-def get_book_pages(url, start_page, end_page, session):
+def get_book_links(url, start_page, end_page, session):
     book_page_urls = []
     for page in trange(
         start_page, end_page, desc="Getting book links in progress", leave=True
