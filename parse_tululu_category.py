@@ -18,9 +18,9 @@ def get_book_links(url, start_page, end_page, session):
         start_page, end_page, desc="Getting book links in progress", leave=True
     ):
         pagination_link = f"{url}/{page}"
-        page_content = session.get(pagination_link)
-        page_content.raise_for_status()
         try:
+            page_content = session.get(pagination_link)
+            page_content.raise_for_status()
             check_for_redirect(page_content)
         except requests.HTTPError:
             log.warning("Redirect detected")
@@ -31,7 +31,7 @@ def get_book_links(url, start_page, end_page, session):
             requests.exceptions.Timeout,
             requests.exceptions.ConnectionError,
         ):
-            log.warning("Try to reconnect soon")
+            log.warning("Failed to establish a connection. Try to reconnect soon")
             sleep(30)
         soup = BeautifulSoup(page_content.content, "lxml")
         page_links = [link["href"] for link in soup.select(".d_book a[href^='/b']")]

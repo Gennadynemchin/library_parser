@@ -25,8 +25,8 @@ log = logging.getLogger(__name__)
 
 
 def main():
-    total_retries = 3
-    backoff_factor = 3
+    total_retries = 1
+    backoff_factor = 1
     session = requests.Session()
     retries = Retry(total=total_retries, backoff_factor=backoff_factor)
     session.mount("https://", HTTPAdapter(max_retries=retries))
