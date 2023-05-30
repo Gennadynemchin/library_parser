@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 from time import sleep
@@ -13,6 +12,7 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 from urllib3.exceptions import MaxRetryError
 from urllib3.exceptions import NewConnectionError
 
+import json
 from arg_parser import get_arg_parser
 from downloads import check_for_redirect
 from downloads import download_cover
@@ -53,10 +53,8 @@ def main():
 
     with logging_redirect_tqdm():
         book_links = get_book_links(science_fantazy_url, start_page, end_page, session)
-        books_metadata = []
-        for book_id in tqdm(
-            book_links, desc="Getting book in progress", leave=True
-        ):
+        books_features = []
+        for book_id in tqdm(book_links, desc="Getting book in progress", leave=True):
             book_text_url = f"{base_url}/txt.php"
             book_page_url = urljoin(base_url, book_id)
             book_number = str("".join(filter(str.isdigit, str(book_id))))
@@ -110,10 +108,10 @@ def main():
                     "comments": page_content.get("comments"),
                     "genres": page_content.get("genres"),
                 }
-                books_metadata.append(content)
-        with open(json_path, "w") as books_data:
+                books_features.append(content)
+        with open(json_path, "w") as file:
             json.dump(
-                {"books_metadata": books_metadata}, books_data, indent=2, ensure_ascii=False
+                {"books_features": books_features}, file, indent=2, ensure_ascii=False
             )
 
 
