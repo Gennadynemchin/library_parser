@@ -54,13 +54,14 @@ def main():
     with logging_redirect_tqdm():
         book_links = get_book_links(science_fantazy_url, start_page, end_page, session)
         books_metadata = []
-        for book_page_url in tqdm(
+        for book_id in tqdm(
             book_links, desc="Getting book in progress", leave=True
         ):
             book_text_url = f"{base_url}/txt.php"
-            book_id = int("".join(filter(str.isdigit, str(book_page_url))))
+            book_page_url = urljoin(base_url, book_id)
+            book_number = str("".join(filter(str.isdigit, str(book_id))))
             try:
-                book_content = download_text(book_text_url, book_id, session)
+                book_content = download_text(book_text_url, book_number, session)
                 book_page = session.get(book_page_url)
                 book_page.raise_for_status()
                 check_for_redirect(book_page)
@@ -70,7 +71,7 @@ def main():
                     book_page_url, page_content["cover"], session
                 )
             except requests.HTTPError:
-                log.warning("The book with ID %s has been passed", book_id)
+                log.warning("The book with number %s has been passed", book_number)
                 continue
             except (
                 MaxRetryError,
@@ -79,7 +80,7 @@ def main():
                 requests.exceptions.ConnectionError,
             ):
                 log.warning(
-                    "Try to reconnect soon. The book with ID %s passed", book_id
+                    "Try to reconnect soon. The book with number %s passed", book_number
                 )
                 sleep(30)
             else:
@@ -97,9 +98,9 @@ def main():
                 else:
                     filepath = None
                 log.info(
-                    "Book %s with ID %s has been downloaded",
+                    "Book %s with number %s has been downloaded",
                     page_content.get("title"),
-                    book_id,
+                    book_number,
                 )
                 content = {
                     "title": page_content.get("title"),

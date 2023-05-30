@@ -1,7 +1,6 @@
 import logging
 from collections import OrderedDict
 from time import sleep
-from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -15,7 +14,6 @@ log = logging.getLogger(__name__)
 
 
 def get_book_links(url, start_page, end_page, session):
-    book_page_urls = []
     for page in trange(
         start_page, end_page, desc="Getting book links in progress", leave=True
     ):
@@ -37,12 +35,7 @@ def get_book_links(url, start_page, end_page, session):
             sleep(30)
         soup = BeautifulSoup(page_content.content, "lxml")
         page_links = [link["href"] for link in soup.select(".d_book a[href^='/b']")]
-        book_ids = list(OrderedDict.fromkeys(page_links))
-        for book_id in book_ids:
-            book_link = urljoin(url, book_id)
-            book_page_urls.append(book_link)
-            log.info("The link %s has been saved", book_link)
-    return book_page_urls
+    return list(OrderedDict.fromkeys(page_links))
 
 
 def get_max_page(url, session):
