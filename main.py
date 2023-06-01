@@ -53,6 +53,7 @@ def main():
 
     with logging_redirect_tqdm():
         book_links = get_book_links(science_fantazy_url, start_page, end_page, session)
+        print(book_links)
         books_features = []
         for book_link in tqdm(book_links, desc="Getting book in progress", leave=True):
             book_text_url = f"{base_url}/txt.php"

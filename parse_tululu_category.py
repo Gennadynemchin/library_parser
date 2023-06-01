@@ -14,6 +14,7 @@ log = logging.getLogger(__name__)
 
 
 def get_book_links(url, start_page, end_page, session):
+    page_links = []
     for page in trange(
         start_page, end_page, desc="Getting book links in progress", leave=True
     ):
@@ -34,7 +35,8 @@ def get_book_links(url, start_page, end_page, session):
             log.warning("Failed to establish a connection. Try to reconnect soon")
             sleep(30)
         soup = BeautifulSoup(page_content.content, "lxml")
-        page_links = [link["href"] for link in soup.select(".d_book a[href^='/b']")]
+        for link in soup.select(".d_book a[href^='/b']"):
+            page_links.append(link["href"])
     return list(OrderedDict.fromkeys(page_links))
 
 
